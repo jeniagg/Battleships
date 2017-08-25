@@ -5,44 +5,115 @@ defmodule Battleships.Games do
     """
 
     use GenServer
+
     # player -> key: name , value:  {pid, ships}
+    defstruct [:pid, players: Map.new(), current_player: nil, uuid: nil]
 
-    defstruct [:pid, players: Map.new(), current_player: nil]
-    
-    def start(players) do
-        GenServer.start(__MODULE__, [players], [])
+    def start(players, uuid) do
+        GenServer.start(__MODULE__, [players, uuid], name: {:global, uuid})
     end
 
-    def start_link(players) do
-        GenServer.start_link(__MODULE__, [players], []) 
-    end
-
-    def make_move(game, player_name, move) do
-        GenServer.call(game, {:make_move, player_name, move})
-    end
-
-    # player: name => pid
-    def init([players]) do
-        # Battleships.Server.set_in_game(players, self())
-        set_in_game(players, self())
-        {player_name, player} = hd(Map.to_list(players))
-        {:ok, %Battleships.Games{pid: self(), players: initialize_state(players), current_player: player_name}}
-    end
-
-    # players: name => pid
-    defp initialize_state(players) do
-        Enum.reduce(players, Map.new(), 
-            fn({player_name, player}, acc) ->
-                %{acc | player_name => %Battleships.GamePlayerData{player: player}}
-            end)
+    def start_link(players, uuid) do
+        GenServer.start_link(__MODULE__, [players, uuid], name: {:global, uuid}) 
     end
     
-    def inspect_state(game_pid) do
-        GenServer.call(game_pid, :inspect_state)
+    def init([players, uuid]) do
+        player_name = Enum.random(players)
+        IO.inspect(player_name, label: "The first player is: ")
+        {:ok, %Battleships.Games{pid: self(), players: initialize_state(players), current_player: player_name, uuid: uuid}}
     end
 
-    def create_board(game, ships, player_name) do
-        GenServer.call(game, {:create_board, ships, player_name})
+    def child_spec(args) do
+        %{
+            id: Battleships.Games,
+            start: {Battleships.Games, :start_link, [args]},
+            restart: :transient,
+            shutdown: 5000,
+            type: :worker       
+        }
+    end
+
+    ########################### API FUNCTIONS ###########################
+
+    @doc ~S"""
+    Kill the game process normally
+
+    Arguments
+        uuid -> The unique uuid of the game
+ 
+    Examples
+        iex> Battleships.Games.stop("7df2eec2-1ddd-42c3-aa1b-1e8b52e3ea31")
+        :ok
+    """
+    def stop(uuid) do
+      GenServer.call({:global, uuid}, :stop)
+    end
+
+    @doc ~S"""
+    Make move in the game through the Game API
+
+    Arguments
+        uuid -> The unique uuid of the game
+        player_name -> the name of the player, which makes the move
+        move -> {x,y} coordinates of the move
+ 
+    Examples
+        iex> Battleships.Games.make_move("7df2eec2-1ddd-42c3-aa1b-1e8b52e3ea31", "a", {1,2})
+        {:error, "It's not your turn."}
+
+        iex> Battleships.Games.make_move("7df2eec2-1ddd-42c3-aa1b-1e8b52e3ea31", "b", {1,2})
+        :no_hit
+
+        iex> Battleships.Games.make_move("7df2eec2-1ddd-42c3-aa1b-1e8b52e3ea31", "b", {1,2})
+        :hit
+    """
+    def make_move(uuid, player_name, move) do
+        GenServer.call({:global, uuid}, {:make_move, player_name, move})
+    end
+
+    @doc ~S"""
+    State of the present game
+
+    Arguments: 
+        uuid -> the unique uuid of the game
+
+    Examples
+
+        iex(mix@Jenia-PC)8> Battleships.Games.inspect_state("c5cfe2a9-0b20-42ff-b94d-e93643209aa6")
+        %Battleships.Games{current_player: "a", pid: #PID<0.178.0>, players: %{"a" => %Battleships.GamePlayerData{player: nil,
+        ships: [[{6, 2}, {7, 2}], [{1, 3}, {1, 4}, {1, 5}], [{7, 8}, {7, 9}], [{3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}], [{5, 6}, {6, 6}]]},
+        "b" => %Battleships.GamePlayerData{player: nil,
+    """
+    def inspect_state(uuid) do
+        GenServer.call({:global, uuid}, :inspect_state)
+    end
+
+    @doc ~S"""
+    Create a board for the given game for the given player. 
+
+    Arguments:
+        player_name -> the name of the player
+        ships -> the ships of the player
+
+    Examples
+        iex> Battleships.Games.create_board("4de61b65-a28b-4083-b370-95f7e19fe748",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}], "pesho")
+        :ok
+
+        iex> Battleships.Games.create_board("4de61b65-a28b-4083-b370-95f7e19fe748",[{:vertical, {6,2}, 13}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}], "pesho")
+        {:error, "The board can't be created! There are wrong coordinates!"}
+
+        iex> Battleships.Player.create_board("4de61b65-a28b-4083-b370-95f7e19fe748",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}], "pesho")
+        {:error, "Wrong number of ships! They must be 5!"}
+    """
+    def create_board(uuid, ships, player_name) do
+        GenServer.call({:global, uuid}, {:create_board, ships, player_name})
+    end
+
+
+    ########################### HANDLE CALL ###########################
+    
+    def handle_call(:stop, _, state) do
+        {:stop, :normal, :ok, state}
     end
 
     def handle_call(:inspect_state, _, state) do
@@ -51,28 +122,44 @@ defmodule Battleships.Games do
 
     def handle_call({:create_board, ships, player_name}, _, state) do
         ships = Battleships.GamePlayerData.generate_ships(ships)
+        IO.inspect(ships, label: "SHIPS: ")
         {:ok, player_data} = Map.fetch(state.players, player_name)
         {new_player_data, reply} = update_ships(player_data, ships)
+        IO.inspect(new_player_data, label: "new_player_data: ")
         new_state = %{state | players: Map.put(state.players, player_name, new_player_data)}
         {:reply, reply, new_state}
     end
 
     # TODO: make the game not die, but ask for a new one, the two players
     def handle_call({:make_move, player_name, move}, _, state) do
-        valid_move = validate_move(player_name, move, state.current_player)
+        valid_move = validate_move(player_name, move, state)
         other_player = get_other_player(state.current_player, state)
-        other_player_ships = get_player_ships(player_name, state)
+        IO.inspect(other_player, label: "MAKE MOVE GET OTHER PLAYER")
+       
+        other_player_ships = get_player_ships(other_player, state)
+        IO.inspect(other_player_ships, label: "ships of the other player")
+       
         {reply, new_ships} = apply_move(valid_move, move, other_player_ships)
+        IO.inspect(new_ships, label: "apply move new ships")
+
         game_end = check_game_end(new_ships, state.players, state.current_player)
-        new_state = update_move_state(reply, other_player, new_ships, state)
+        IO.inspect(game_end, label: "check if the game is end : ")
+        
         case game_end do
-            :continue -> {:reply, reply, new_state}
-            :game_end -> {:stop, :normal, new_state}
+            :continue -> 
+                new_state = update_move_state(reply, other_player, new_ships, state)
+                {:reply, reply, new_state}
+            :game_end -> 
+                {:stop, :normal, state}
         end
     end
 
+    
+    ########################### PRIVATE FUNCTIONS ###########################
+
     defp update_move_state({:error, _}, _, _, state), do: state
-    defp update_move_state(:ok, other_player, new_ships, state) do
+    defp update_move_state(:no_hit, other_player, _, state), do: %{state | current_player: other_player}
+    defp update_move_state(:hit, other_player, new_ships, state) do
         other_player_data = get_player_data(other_player, state)
         %{state | current_player: other_player,
             players: Map.put(state.players, other_player, update_player_ships(other_player_data, new_ships))
@@ -80,19 +167,30 @@ defmodule Battleships.Games do
     end
 
     defp check_game_end([], players, current_player) do
-        Enum.reduce(players, 
-            fn({player_name, player_data}) ->
-                Battleships.Player.match_end(player_data.player, {:winner, current_player}) 
-            end
-        )
+
+        players_name = Map.keys(players)
+                IO.inspect(players_name, label: "check game end PLAYERS: ")
+        List.foldl(players_name, [], 
+            fn(player_name, _) ->
+                IO.inspect(player_name, label: "in the foldl: ")
+                Battleships.Player.match_end(player_name, {:winner, current_player})
+                IO.puts("first foldl is over")
+            end)
+        
+        
+        # Enum.reduce(players,
+        # fn({_, player_data}) ->
+        #         Battleships.Player.match_end(player_data.player, {:winner, current_player}) 
+        #     end
+        # )
         :game_end
     end
 
     defp check_game_end(_, _, _), do: :continue
 
-    defp apply_move(reply = {:error, msg}, _, ships), do: {reply, ships}
+    defp apply_move(reply = {:error, _}, _, ships), do: {reply, ships}
     defp apply_move(:ok, move, ships) do
-        Battleships.GamePlayerData.apply_move(move, ships)
+       Battleships.GamePlayerData.apply_move(move, ships)
     end
 
     defp get_other_player(current_player, state) do
@@ -113,14 +211,14 @@ defmodule Battleships.Games do
 
     defp update_player_ships(player_data, new_ships), do: %{player_data | ships: new_ships}
 
-    defp validate_move(player_name, move, current_player) do
-        valid_player = validate_player(player_name, current_player)
+    defp validate_move(player_name, move, state) do
+        valid_player = validate_player(player_name, state.current_player)
         valid_position = validate_position(Battleships.GamePlayerData.is_valid(move))
         validate_move(valid_player, valid_position)
     end
 
-    defp validate_player(player_name, player_name), do: :ok
-    defp validate_player(_player_name, _current_player), do: {:error, "It's not your turn."}
+    defp validate_player(player_name, current_player) when player_name == current_player, do: :ok
+    defp validate_player(_, _), do: {:error, "It's not your turn."}
 
     defp validate_position(true), do: :ok
     defp validate_position(false), do: {:error, "Wrong move"}
@@ -130,28 +228,25 @@ defmodule Battleships.Games do
     defp validate_move(reply, :ok), do: reply
     defp validate_move(reply, _), do: reply
 
-    defp update_ships(player, reply = {:error, msg}), do: {player, reply}
+    defp update_ships(player, reply = {:error, _}), do: {player, reply}
     defp update_ships(player_data, {:ok, ships}) do
         new_player_data = %{player_data | ships: ships}
         {new_player_data, :ok}
     end
 
-    defp set_in_game(players, game) do
+    defp set_in_game(players, uuid) do
         Enum.reduce(players, :ok,
             fn({_, player}, _) ->
-                Battleships.Player.set_in_game(player, game)
+                Battleships.Player.set_in_game(player, uuid)
             end)
     end
 
-    def child_spec(args) do
-        %{
-            id: Battleships.Games,
-            start: {Battleships.Games, :start_link, [args]},
-            restart: :transient,
-            shutdown: 5000,
-            type: :worker       
-        }
+    defp initialize_state(players) do
+        IO.inspect(players, label: "init state players in game")
+        List.foldl(players, Map.new(), 
+            fn(player_name, acc) ->
+                Map.put_new(acc, player_name, %Battleships.GamePlayerData{})
+            end)
     end
     
-
 end

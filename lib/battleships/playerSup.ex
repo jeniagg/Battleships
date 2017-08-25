@@ -1,5 +1,10 @@
 defmodule Battleships.PlayerSup do
     
+    @moduledoc """
+    The module represents the Supervisor of the Player processes.
+    The used strategy is simple_one_for_one and the restart is transient.
+    """
+
     use Supervisor
 
     def start_link() do
@@ -7,10 +12,9 @@ defmodule Battleships.PlayerSup do
     end
 
     def init([]) do
-        children = [worker(Battleships.Player, [])]
+        children = [worker(Battleships.Player, [], restart: :transient)]
         opts = [strategy: :simple_one_for_one]
         supervise(children, opts)
-        #Supervisor.init([Player.child_spec([])], strategy: :simple_one_for_one)
     end
     
     def create_player(name) do
@@ -18,9 +22,9 @@ defmodule Battleships.PlayerSup do
         pid
     end
 
-    # def delete_player(name) do
-    #     Supervisor.terminate_child(__MODULE__, name)
-    # #   Supervisor.delete_child(__MODULE__, name)
-    # end
+    def create_player(player_name, node) do
+        {:ok, pid} = Supervisor.start_child(node, [player_name])
+        pid
+    end
     
 end

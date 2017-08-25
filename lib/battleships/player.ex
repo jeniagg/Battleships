@@ -4,165 +4,22 @@ defmodule Battleships.Player do
     The module represents the player server.
     It is responsible for player initiatives.
     """
-    
-    # TODO terminate
 
     use GenServer
 
-    defstruct [:name, :pid, game: nil]
-
-    ########### interface #############
-    def start(name) do
-        GenServer.start(__MODULE__, [name], [])
+    defstruct [:name, :pid, game: nil, in_room: false]
+  
+    def start(player_name) do
+        GenServer.start(__MODULE__, [player_name], name: {:global, player_name})
     end
 
-    def start_link(name) do
-        GenServer.start_link(__MODULE__, [name], []) 
+    def start_link(player_name) do
+        GenServer.start_link(__MODULE__, [player_name], name: {:global, player_name}) 
     end
 
     def init([player_name]) do
+        IO.inspect(player_name, label: "Starting player: ")
         {:ok, %Battleships.Player{name: player_name, pid: self()}}
-    end
-
-    
-    @doc """
-    A player can enter in already created room through this function.
-    
-    Arguments
-        player - the name of the player to enter a room
-        room_name - the name of the room the player wants to enter
-        
-    Returning values
-        successfull entering: {:ok, pid_of_the_game}
-        unsseccssesfull entering: {:error, message}
-
-    Examples
-
-        iex> {:ok, game} = Battleships.Player.enter_room(pesho, "room1")
-        {:ok, #PID<0.121.0>}
- 
-        iex> Battleships.Player.enter_room(gosho, "room")
-        {:error, "Room with this name doesn't exists"}
-    """
-    def enter_room(player, room_name) do
-        GenServer.call(player, {:enter_room, room_name})    
-    end
-
-    @doc """
-    A player can create a room through this function.
-
-    The name of the room should be unique and the player should be logged in.
-    
-    Arguments
-        player - the name of the player to create a room
-        room_name - the name of the room the player wants to create
-        
-    Returning values
-        successfull creating: {:ok, pid_of_the_room}
-        unsseccssesfull creating: {:error, message}
-
-    Examples
-
-        iex> {:ok, room} = Battleships.Player.create_room(pesho, "room1")
-        {:ok, #PID<0.166.0>}
- 
-        iex> Battleships.Player.create_room(gosho, "room1")
-        {:error, "Room with this name already exists."}
-    """
-    @spec create_room(pid|String|{node, String}, String) :: {:ok, pid} | {:error, String}
-    def create_room(player, room_name) do
-        GenServer.call(player, {:create_room, room_name})
-    end
-
-    # TODO : player left ->  game? room?
-    def logout(player) do
-        GenServer.cast(player, :logout)
-    end
-
-    
-    @doc """
-    A player can leave a room through this function.
-
-    The player should be present.
-
-    Examples
-
-        iex> Battleships.Player.leave_room(pesho, "room")
-        :ok
-    """
-    def leave_room(player, room_name) do
-        GenServer.cast(player, {:leave_room, room_name})
-    end
-
-    def inspect_state(player) do
-        GenServer.call(player, :inspect_state)
-    end
-
-    def create_board(player, ships) do
-        GenServer.call(player, {:create_board, ships})
-    end
-
-    def set_in_game(player, game) do
-        GenServer.cast(player, {:set_in_game, game})
-    end
-
-    def make_move(player, move) do
-        GenServer.call(player, {:make_move, move})
-    end
-
-    def match_end(player, {:winner, winner_name}) do
-        GenServer.cast(player, {:match_end, winner_name})
-    end
-
-    ########## Handle call ##########
-
-    def handle_call(:inspect_state, _, state) do
-        {:reply, state, state}
-    end
-
-    def handle_call({:enter_room, room_name}, _, state) do
-        reply = Battleships.Server.enter_room(room_name, state.name)  
-        {:reply, reply, state}  
-    end
-
-    def handle_call({:create_room, room_name}, _, state) do
-       reply = Battleships.Server.create_room(room_name, state.name) 
-       {:reply, reply, state}  
-    end    
-
-    def handle_call({:create_board, ships}, _, state) do
-        reply = Battleships.Games.create_board(state.game, ships, state.name)
-        {:reply, reply, state}
-    end
-
-    def handle_call({:make_move, move}, _, state) do
-        Battleships.Games.make_move(state.game, state.name, move)
-    end
-    
-    ######### Handle cast ##########
-
-    def handle_cast({:leave_room, room_name}, state) do
-        Battleships.Server.leave_room(room_name, state.name)
-        {:noreply, state}
-    end
-    
-    def handle_cast(:logout, state) do
-        Battleships.Server.logout(state.name)
-        {:noreply, state}
-    end
-
-    def handle_cast({:set_in_game, game}, state) do
-        new_state = %{state | game: game}
-        {:noreply, new_state}
-    end
-
-    def handle_cast({:match_end, winner_name}, state) do
-        case winner_name == state.name do
-            true -> IO.puts("You won the game!")
-            false -> IO.puts("You have lost the game!")
-        end
-        new_state = %{state | game: nil}
-        {:reply, new_state}
     end
 
     def child_spec(args) do
@@ -174,5 +31,287 @@ defmodule Battleships.Player do
             type: :worker       
         }
     end
+    
+    @doc ~S"""
+    A player can create a room through this function.
+
+    The name of the room should be unique and the player should be logged in.
+    
+    Arguments
+        player - the name of the player to create a room
+        room_name - the name of the room the player wants to create
+
+    Examples
+
+        iex> Battleships.Player.create_room("pesho", "room")
+        {:ok, "room"}
+ 
+        iex> Battleships.Player.create_room("pesho", "room")
+        {:error, "Room with this name already exists."}
+    """
+    # @spec create_room(String|{node, String}, String) :: {:ok, pid} | {:error, String}
+    def create_room(player_name, room_name) do
+        GenServer.call({:global, player_name}, {:create_room, room_name})
+    end
+
+    @doc ~S"""
+    Player can enter a room, which is already present.
+
+    The player shoul be logged in.
+    
+    Arguments
+        player - the name of the player to enter a room
+        room_name - the name of the room the player wants to enter
+
+    Examples
+
+        iex> Battleships.Player.enter_room("pesho", "room1")
+        {:ok, "93a3ee09-e24a-4a46-a17d-8c9520b108c7"}
+ 
+        iex> Battleships.Player.enter_room("gosho", "room2")
+        {:error, "Room with this name doesn't exists"}
+    """
+    def enter_room(player_name, room_name) do   
+        GenServer.call({:global, player_name}, {:enter_room, room_name})  
+    end
+
+    @doc ~S"""
+    A player can leave a room through this function.
+
+    The player should be present.
+
+    Examples
+
+        iex> Battleships.Player.leave_room("pesho", "room")
+        :ok
+    """
+    def leave_room(player_name, room_name) do
+        GenServer.cast({:global, player_name}, {:leave_room, room_name})
+    end
+
+    @doc ~S"""
+    Logout from the system.
+    
+    If the player is in room and/or game, they will be destroyed.
+
+    Arguments
+        player_name -> the name of the player
+
+    Examples
+
+        iex> Battleships.Player.logout("pesho")
+        :ok
+    """
+    def logout(player_name) do
+        GenServer.cast({:global, player_name}, :logout)
+    end
+
+    @doc ~S"""
+    State of the present player
+
+    Arguments: 
+        player_name -> the name of the player
+
+    Examples
+
+        iex> Battleships.Player.inspect_state("pesho")
+        %Battleships.Player{game: nil, in_room: false, name: "pesho", pid: #PID<0.184.0>}
+    """
+    def inspect_state(player_name) do
+        GenServer.call({:global, player_name}, :inspect_state)
+    end
+
+    @doc ~S"""
+    Put player in a game. The player and game should be present.
+
+    Arguments
+        player_name -> the name of the player to be put in the game
+        game_name -> the name of the game to put the player in
+
+    Examples
+
+        iex> Battleships.Player.set_in_game("pesho", "room")
+        :ok
+    """
+    # @spec set_in_game(String, String)::
+    def set_in_game(player_name, game_name) do
+        GenServer.cast({:global, player_name}, {:set_in_game, game_name})
+    end
+
+    @doc ~S"""
+    Create a board for the game for the present player. 
+
+    Arguments:
+        player_name -> the name of the player
+        ships -> the ships of the player
+
+    Examples
+        iex> Battleships.Player.create_board("a",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}])
+        :ok
+
+        iex> Battleships.Player.create_board("a",[{:vertical, {6,11}, 1}, {:horizontal, {1,3}, 2}])
+        {:error, "The board can't be created! There are wrong coordinates!"}
+
+        iex> Battleships.Player.create_board("a",[{:vertical, {6,2}, 1}, {:horizontal, {1,3}, 2}])
+        {:error, "Wrong number of ships! They must be 5!"}
+    """
+    @spec create_board(String, List) :: {:ok, pid} | {:error, String}
+    def create_board(player_name, ships) do
+        GenServer.call({:global, player_name}, {:create_board, ships})
+    end
+
+    @doc ~S"""
+    Make move in the game.
+
+    Arguments
+        player_name -> the name of the player to make the move
+        move -> the coordinates which player what to try {x,y}
+ 
+    Examples
+
+        iex> Battleships.Player.make_move("pesho", {1,2})
+        {:error, "It's not your turn."}
+
+        iex> Battleships.Player.make_move("gosho", {1,2})
+        :no_hit
+
+        iex> Battleships.Player.make_move("pesho", {1,2})
+        :hit
+    """
+    def make_move(player_name, move) do
+        GenServer.call({:global, player_name}, {:make_move, move})
+    end
+
+    @doc ~S"""
+    Announce that the game is over and sent message to the two players
+
+    Arguments
+        player_name -> the name of the player who is present
+        winner_name -> the name of the player who won the game
+ 
+    Examples
+
+        iex> Battleships.Player.match_end("pesho", {:winner, "pesho"})
+        :ok
+    """
+    def match_end(player_name, {:winner, winner_name}) do
+        GenServer.cast({:global, player_name}, {:match_end, winner_name})
+    end
+
+    @doc ~S"""
+    Kill the player process normally
+
+    Arguments
+        player_name -> the name of the player whose process is to be stopped
+ 
+    Examples
+        iex> Battleships.Player.stop("pesho")
+        :ok
+    """
+    @spec stop(String):: term()
+    def stop(player_name) do
+      IO.inspect(player_name, label: "stop in the player, player_name: ")
+      GenServer.call({:global, player_name}, :stop)
+    end
+
+    
+    def move_player_to_another_node(player_name, node, room_name) do
+        GenServer.call({:global, player_name}, {:move_player_to_another_node, node, room_name})
+    end
+
+    #################### HANDLE CALL ####################
+
+    def handle_call({:move_player_to_another_node, node, room_name}, _, state) do
+        Battleships.Server.remove_room(room_name)
+        player_state = state;
+        Battleships.Player.stop(state.player)
+        Battleships.PlayerSup.create_player(node, player_state.name)
+        new_state = player_state
+        {:reply, {:ok, new_state}, new_state}
+    end
+
+    def handle_call(:inspect_state, _, state) do
+        {:reply, state, state}
+    end
+
+    def handle_call({:enter_room, room_name}, _, state) do
+        reply = case state.in_room do
+            true -> state
+            false -> Battleships.Server.enter_room(room_name, state.name) 
+        end
+        {:reply, reply, state}  
+    end
+
+    def handle_call({:create_room, room_name}, _, state) do
+       reply = Battleships.Server.create_room(room_name, state.name) 
+       new_state = case reply do
+            {:ok, _} -> %{state | in_room: true}
+            {:error, _} -> state
+       end
+       {:reply, reply, new_state}  
+    end    
+
+    def handle_call({:create_board, ships}, _, state) do
+        reply = Battleships.Games.create_board(state.game, ships, state.name)
+        {:reply, reply, state}
+    end
+
+    def handle_call({:make_move, move}, _, state) do
+        reply = Battleships.Games.make_move(state.game, state.name, move)
+        {:reply, reply, state}
+    end
+
+    def handle_call(:stop, _, state) do
+        IO.puts("handle call :stop in the player")
+        {:stop, :normal, :ok, state}
+    end
+    
+    ################## HANDLE CAST ###################
+
+    def handle_cast({:leave_room, room_name}, state) do
+        case state.game != nil do
+           true -> Battleships.Games.stop(state.game)
+           false -> :ok
+        end
+        new_state = %{state | in_room: false, game: nil}
+        Battleships.Server.leave_room(room_name, state.name)
+        {:noreply, new_state}
+    end
+    
+    def handle_cast(:logout, state) do
+        Battleships.Server.logout(state.name)
+        {:noreply, state}
+    end
+
+    def handle_cast({:set_in_game, new_game}, state) do
+        new_state = %{state | game: new_game, in_room: false}
+        {:noreply, new_state}
+    end
+
+    def handle_cast({:match_end, winner_name}, state) do
+        case winner_name == state.name do
+            true -> IO.puts("You won the game!")
+            false -> IO.puts("You have lost the game!")
+        end
+        new_state = %{state | game: nil}
+        {:noreply, new_state}
+    end
+
+    ##################### PRIVATE FUNCTIONS #########################
+
+    # find game's pid by its name
+    # return pid of the game
+    # defp find_game(state, game_name) do
+    #     game = Enum.find(state.game, fn(element) -> element == game_name end)
+    #     find_game_pid(game_name)
+    # end
+
+    # defp find_game_pid(nil), do: nil
+    # defp find_game_pid(game_name), do: :global.whereis_name(game_name)
+
+    # for testing supervisors
+    # def crash_player(player_name) do
+    #     raise ArgumentError 
+    # end
 
 end

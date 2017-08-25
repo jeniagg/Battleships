@@ -1,5 +1,10 @@
 defmodule Battleships.Supervisor do
     
+    @moduledoc """
+    The module represents the main supervisor of the game.
+    If this supervisor dies, the whole game dies.
+    """
+
     use Supervisor
 
     def start_link() do

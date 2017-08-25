@@ -1,8 +1,9 @@
-defmodule BattleshipsTest do
+defmodule Battleships.ServerTest do
   use ExUnit.Case
-  doctest Battleships
+  doctest Battleships.Server
+ 
 
-  test "the truth" do
-    assert 1 + 1 == 2
-  end
+  # test "the truth" do
+  #   assert 1 + 1 == 2
+  # end
 end
