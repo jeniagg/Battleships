@@ -87,7 +87,7 @@ defmodule Battleships.Rooms do
 
     Examples
 
-        iex(mix@Jenia-PC)13> Battleships.Rooms.leave_room("room3", "pesho")
+        iex> Battleships.Rooms.leave_room("room3", "pesho")
         :ok
     """
     def leave_room(room_name, player_name) do

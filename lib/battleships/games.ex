@@ -79,7 +79,7 @@ defmodule Battleships.Games do
 
     Examples
 
-        iex(mix@Jenia-PC)8> Battleships.Games.inspect_state("c5cfe2a9-0b20-42ff-b94d-e93643209aa6")
+        iex> Battleships.Games.inspect_state("c5cfe2a9-0b20-42ff-b94d-e93643209aa6")
         %Battleships.Games{current_player: "a", pid: #PID<0.178.0>, players: %{"a" => %Battleships.GamePlayerData{player: nil,
         ships: [[{6, 2}, {7, 2}], [{1, 3}, {1, 4}, {1, 5}], [{7, 8}, {7, 9}], [{3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}], [{5, 6}, {6, 6}]]},
         "b" => %Battleships.GamePlayerData{player: nil,
