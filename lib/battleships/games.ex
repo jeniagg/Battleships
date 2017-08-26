@@ -213,13 +213,6 @@ defmodule Battleships.Games do
         {new_player_data, :ok}
     end
 
-    defp set_in_game(players, uuid) do
-        Enum.reduce(players, :ok,
-            fn({_, player}, _) ->
-                Battleships.Player.set_in_game(player, uuid)
-            end)
-    end
-
     defp initialize_state(players) do
         IO.inspect(players, label: "init state players in game")
         List.foldl(players, Map.new(), 

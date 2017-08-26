@@ -130,19 +130,14 @@ defmodule Battleships.Rooms do
     defp start_game(2, players, new_state) do
         players_on_the_same_node(players, new_state.name)
         game = Battleships.GameSup.create_game(players)
-        [second_player, first_player] = players
-    
         List.foldl(players, :ok, 
-            fn(player_name, acc) ->
+            fn(player_name, _) ->
                  Battleships.Player.set_in_game(player_name, game)
             end)
         game
     end
-
-    defp start_game(_, _players, _, _), do: :ok
     
-    defp players_on_the_same_node(players, state) do
-        IO.inspect(players, label: "node players")
+    defp players_on_the_same_node(players, _) do
         [second_player, first_player] = players
         node_second = node(:global.whereis_name(second_player))
         node_first = node(:global.whereis_name(first_player))
@@ -151,7 +146,6 @@ defmodule Battleships.Rooms do
             false ->
                 :global.unregister_name(second_player)
                 Battleships.PlayerSup.create_player(second_player, node_first)
-                IO.inspect([node(:global.whereis_name(second_player)) , node(:global.whereis_name(first_player))], label: "NODES " )
         end
     end
 

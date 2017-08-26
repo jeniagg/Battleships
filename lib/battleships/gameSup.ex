@@ -19,7 +19,7 @@ defmodule Battleships.GameSup do
 
     def create_game(players) do
         uuid = UUID.uuid4()
-        {:ok, pid} = Supervisor.start_child(__MODULE__, [players, uuid])
+        {:ok, _} = Supervisor.start_child(__MODULE__, [players, uuid])
         uuid
     end
 

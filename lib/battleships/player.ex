@@ -271,7 +271,6 @@ defmodule Battleships.Player do
     end
 
     def handle_call(:stop, _, state) do
-        IO.puts("handle call :stop in the player")
         {:stop, :normal, :ok, state}
     end
     
@@ -299,8 +298,8 @@ defmodule Battleships.Player do
 
     def handle_cast({:match_end, winner_name}, state) do
         case winner_name == state.name do
-            true -> IO.puts("You won the game!")
-            false -> IO.puts("You have lost the game!")
+            true -> IO.inspect(winner_name, label: "The winner is: ")
+            false -> IO.puts("GAME OVER")
         end
         new_state = %{state | game: nil}
         {:noreply, new_state}

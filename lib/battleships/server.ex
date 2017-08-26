@@ -39,7 +39,6 @@ defmodule Battleships.Server do
         {:error, "Username taken"}
     """
     def login(player_name) do
-        IO.puts("server login")
         GenServer.call(__MODULE__, {:login, player_name})
     end
 
@@ -54,7 +53,6 @@ defmodule Battleships.Server do
         :ok
     """
     def logout(player_name) do
-        IO.inspect(player_name, label: "player_name logout server")
         GenServer.cast(__MODULE__, {:logout, player_name})
     end
     
@@ -116,15 +114,6 @@ defmodule Battleships.Server do
     """
     def enter_room(room_name, player_name) do
         GenServer.call(__MODULE__, {:enter_room, room_name, player_name}, :infinity)
-    end
-
-    # def find_player_pid(player_name) do
-    #     GenServer.call(__MODULE__, {:find_player_pid, player_name})
-    # end
-    
-    # interface to delete a room
-    def remove_room(name) do
-        GenServer.cast(__MODULE__, {:remove_room, name})
     end
 
     @doc ~S"""
@@ -201,7 +190,6 @@ defmodule Battleships.Server do
     end
 
     def handle_call({:create_room, room_name, player_name}, _, state) do
-        IO.puts("CREATE ROOM")
         case is_room_created?(state.rooms, room_name) do
             false ->
                 is_logged_player = is_logged?(state.players, player_name)
@@ -213,23 +201,16 @@ defmodule Battleships.Server do
 
     def handle_call({:enter_room, room_name, player_name}, _, state) do
         case is_room_created?(state.rooms, room_name) do
-            false -> 
-                # GenServer.reply(from, {:error, "Room with this name doesn't exists"})
-                {:reply, {:error, "Room with this name doesn't exists"}, state}
+            false -> {:reply, {:error, "Room with this name doesn't exists"}, state}
             true ->
                 is_logged = is_logged?(state.players, player_name)
                 {game_reply, new_state} = set_player_in_room(is_logged, player_name, room_name, state)
-                IO.inspect(game_reply, label: "game reply: ")
                 {:reply, game_reply, new_state}
         end
     end
 
    ########################## HANDLE CAST  ##########################
-
-    def handle_cast({:remove_room, name}, state) do
-        new_state = %{ state | rooms: List.delete(state.rooms, name)}
-        {:reply, new_state, new_state}
-    end
+   
 
     def handle_cast({:logout, player_name}, state) do
         case is_logged?(state.players, player_name) do
