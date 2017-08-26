@@ -9,6 +9,10 @@ defmodule Battleships.Rooms do
 
     defstruct [:name, :pid, counter:  0, players: [] ]
 
+    @type room(name, pid, counter, players) :: %Battleships.Rooms{name: name, pid: pid, counter: counter, players: players}
+    @type room :: %Battleships.Rooms{name: String, pid: PID, counter: Integer, players: List}
+  
+
     def start(room_name, player_name) do
         GenServer.start(__MODULE__, [room_name, player_name], name: {:global, room_name})
     end
@@ -44,6 +48,7 @@ defmodule Battleships.Rooms do
         iex> Battleships.Rooms.inspect_state("room3")
         %Battleships.Rooms{counter: 1, name: "room3", pid: :global.whereis_name("room3"), players: ["pesho"]}
     """
+    @spec inspect_state(String) :: room
     def inspect_state(room_name) do
         GenServer.call({:global, room_name}, :inspect_state)
     end
@@ -58,6 +63,7 @@ defmodule Battleships.Rooms do
         iex> Battleships.Rooms.stop("room3")
         :ok
     """
+    @spec stop(String) :: :ok
     def stop(room_name) do
       GenServer.call({:global, room_name}, :stop)
     end
@@ -77,6 +83,7 @@ defmodule Battleships.Rooms do
         iex> Battleships.Rooms.enter_room("room", "ds")
         {:ok, :ok}
     """
+    @spec enter_room(String, String) :: {:ok, UUID} | {:ok, :ok}
     def enter_room(room_name, player_name) do
         GenServer.call({:global, room_name}, {:enter_room, player_name}, :infinity)
     end
@@ -91,6 +98,7 @@ defmodule Battleships.Rooms do
         iex> Battleships.Rooms.leave_room("room3", "pesho")
         :ok
     """
+    @spec leave_room(String, String) :: :ok
     def leave_room(room_name, player_name) do
         GenServer.cast({:global, room_name}, {:leave_room, player_name}) 
     end

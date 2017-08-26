@@ -8,8 +8,10 @@ defmodule Battleships.Player do
     use GenServer
 
     defstruct [:name, :pid, game: nil, in_room: false]
+
+    @type player(name, pid, game, in_room) :: %Battleships.Player{name: name, pid: pid, game: game, in_room: in_room}
+    @type player :: %Battleships.Player{name: String, pid: PID, game: UUID,  in_room: BOOLEAN}
   
-      
     def start([player_name, state]) do
         GenServer.start(__MODULE__, [player_name, state], name: {:global, player_name})
     end
@@ -22,7 +24,6 @@ defmodule Battleships.Player do
         GenServer.start_link(__MODULE__, [player_name, state], name: {:global, player_name}) 
     end
 
-    
     def start_link(player_name) do
         GenServer.start_link(__MODULE__, [player_name], name: {:global, player_name}) 
     end
@@ -31,8 +32,6 @@ defmodule Battleships.Player do
         IO.inspect(player_name, label: "Starting player: ")
         {:ok, %Battleships.Player{name: player_name, pid: self()}}
     end
-
-
 
     def child_spec(args) do
         %{
@@ -63,7 +62,7 @@ defmodule Battleships.Player do
 
 
     """
-    # @spec create_room(String|{node, String}, String) :: {:ok, pid} | {:error, String}
+    @spec create_room(String, String) :: {:ok, String} | {:error, String}
     def create_room(player_name, room_name) do
         GenServer.call({:global, player_name}, {:create_room, room_name})
     end
@@ -87,6 +86,7 @@ defmodule Battleships.Player do
     
 
     """
+    @spec enter_room(String, String) :: {:ok, UUID} | {:error, String}
     def enter_room(player_name, room_name) do   
         GenServer.call({:global, player_name}, {:enter_room, room_name}, :infinity)  
     end
@@ -101,6 +101,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.leave_room("pesho", "room")
         :ok
     """
+    @spec leave_room(String, String) :: :ok
     def leave_room(player_name, room_name) do
         GenServer.cast({:global, player_name}, {:leave_room, room_name})
     end
@@ -118,6 +119,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.logout("pesho")
         :ok
     """
+    @spec logout(String) :: :ok
     def logout(player_name) do
         GenServer.cast({:global, player_name}, :logout)
     end
@@ -133,6 +135,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.inspect_state("pesho")
         %Battleships.Player{game: nil, in_room: false, name: "pesho", pid: :global.whereis_name("pesho")}
     """
+    @spec inspect_state(String) :: player
     def inspect_state(player_name) do
         GenServer.call({:global, player_name}, :inspect_state)
     end
@@ -149,7 +152,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.set_in_game("pesho", "room")
         :ok
     """
-    # @spec set_in_game(String, String)::
+    @spec set_in_game(String, String) :: :ok
     def set_in_game(player_name, game_name) do
         GenServer.cast({:global, player_name}, {:set_in_game, game_name})
     end
@@ -200,6 +203,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.make_move("pesho", {1,2})
         :hit
     """
+    @spec make_move(String, {Integer, Integer}) :: {:error, String} | :no_hit | :hit 
     def make_move(player_name, move) do
         GenServer.call({:global, player_name}, {:make_move, move})
     end
@@ -216,6 +220,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.match_end("pesho", {:winner, "pesho"})
         :ok
     """
+    @spec match_end(String, {:winner, String}) :: :ok
     def match_end(player_name, {:winner, winner_name}) do
         GenServer.cast({:global, player_name}, {:match_end, winner_name})
     end
@@ -230,7 +235,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.stop("gosho")
         :ok
     """
-    # @spec stop(String):: term()
+    @spec stop(String) :: :ok
     def stop(player_name) do
       GenServer.call({:global, player_name}, :stop)
     end

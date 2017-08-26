@@ -8,6 +8,9 @@ defmodule Battleships.Server do
 
     defstruct [players: [], rooms: []]
 
+    @type server(players, rooms) :: %Battleships.Server{players: players, rooms: rooms}
+    @type server :: %Battleships.Server{players: List, rooms: List}
+  
     def start() do
         GenServer.start(__MODULE__, [], [name: __MODULE__])
     end
@@ -38,6 +41,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.login("pesho_test")
         {:error, "Username taken"}
     """
+    @spec login(String) :: {:ok, String} | {:error, String}
     def login(player_name) do
         GenServer.call(__MODULE__, {:login, player_name})
     end
@@ -52,6 +56,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.logout("pesho")
         :ok
     """
+    @spec logout(String) :: :ok
     def logout(player_name) do
         GenServer.cast(__MODULE__, {:logout, player_name})
     end
@@ -64,6 +69,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.get_rooms()
         {:ok, []}
     """
+    @spec get_rooms() :: {:ok, List}
     def get_rooms() do
         GenServer.call(__MODULE__, :get_rooms)
     end
@@ -88,6 +94,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.create_room("b", "room3")
         {:error, "No such player"}
     """
+    @spec create_room(String, String) :: {:ok, String} | {:error, String}
     def create_room(room_name, player_name) do
         GenServer.call(__MODULE__, {:create_room, room_name, player_name})
     end
@@ -112,6 +119,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.enter_room("room3", "gosho")
         {:ok, "643fa07a-e7b4-42ac-a5ed-c3b51f465959"}
     """
+    @spec enter_room(String, String) :: {:ok, UUID} | {:error, String} | :error
     def enter_room(room_name, player_name) do
         GenServer.call(__MODULE__, {:enter_room, room_name, player_name}, :infinity)
     end
@@ -130,6 +138,7 @@ defmodule Battleships.Server do
         iex6> Battleships.Server.leave_room("room3", "pesho")
         :ok
     """
+    @spec leave_room(String, String) :: :ok
     def leave_room(room_name, player_name) do
         GenServer.cast(__MODULE__, {:leave_room, room_name, player_name})
     end
@@ -142,6 +151,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.inspect_state()
         %Battleships.Server{players: ["pesho_test"], rooms: []}
     """
+    @spec inspect_state() :: server
     def inspect_state() do
         GenServer.call(__MODULE__, :inspect_state)
     end
@@ -149,6 +159,7 @@ defmodule Battleships.Server do
     @doc ~S"""
     Gets all players on the specified server.
     """
+    @spec get_local_players(Battleships.Server) :: List
     def get_local_players(server) do
         GenServer.call(server, :get_local_players)
     end
@@ -156,6 +167,7 @@ defmodule Battleships.Server do
     @doc ~S"""
     Get all rooms on the specified server.
     """
+    @spec get_local_rooms(Battleships.Server) :: List
     def get_local_rooms(server) do
         GenServer.call(server, :get_local_rooms)
     end

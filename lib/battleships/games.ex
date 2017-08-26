@@ -9,6 +9,9 @@ defmodule Battleships.Games do
     # player -> key: name , value:  {pid, ships}
     defstruct [:pid, players: Map.new(), current_player: nil, uuid: nil]
 
+    @type game(pid, players, current_player, uuid) :: %Battleships.Games{pid: pid, players: players, current_player: current_player, uuid: uuid}
+    @type game :: %Battleships.Games{pid: PID, players: Map, current_player: String, uuid: UUID}
+  
     def start(players, uuid) do
         GenServer.start(__MODULE__, [players, uuid], name: {:global, uuid})
     end
@@ -45,6 +48,7 @@ defmodule Battleships.Games do
         iex> Battleships.Games.stop("7df2eec2-1ddd-42c3-aa1b-1e8b52e3ea31")
         :ok
     """
+    @spec stop(UUID) :: :ok
     def stop(uuid) do
       GenServer.call({:global, uuid}, :stop)
     end
@@ -67,6 +71,7 @@ defmodule Battleships.Games do
         iex> Battleships.Games.make_move("7df2eec2-1ddd-42c3-aa1b-1e8b52e3ea31", "b", {1,2})
         :hit
     """
+    @spec make_move(UUID, String, {Integer, Integer}) :: {:error, String} | :no_hit | :hit
     def make_move(uuid, player_name, move) do
         GenServer.call({:global, uuid}, {:make_move, player_name, move})
     end
@@ -82,6 +87,7 @@ defmodule Battleships.Games do
         iex> Battleships.Games.inspect_state("c5cfe2a9-0b20-42ff-b94d-e93643209aa6")
         %Battleships.Games{current_player: "pesho", pid: :global.whereis_name("c5cfe2a9-0b20-42ff-b94d-e93643209aa6"), players: %{"gosho" => %Battleships.GamePlayerData{player: nil, ships: []}, "pesho" => %Battleships.GamePlayerData{player: nil, ships: []}}, uuid: "c5cfe2a9-0b20-42ff-b94d-e93643209aa6"}
     """
+    @spec inspect_state(UUID) :: game
     def inspect_state(uuid) do
         GenServer.call({:global, uuid}, :inspect_state)
     end
@@ -103,6 +109,7 @@ defmodule Battleships.Games do
         iex> Battleships.Player.create_board("4de61b65-a28b-4083-b370-95f7e19fe748",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}], "pesho")
         {:error, "Wrong number of ships! They must be 5!"}
     """
+    @spec create_board(UUID, List, String) :: :ok | {:error, String}
     def create_board(uuid, ships, player_name) do
         GenServer.call({:global, uuid}, {:create_board, ships, player_name})
     end

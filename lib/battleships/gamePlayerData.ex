@@ -23,6 +23,7 @@ defmodule Battleships.GamePlayerData do
         iex> Battleships.GamePlayerData.generate_ships([{:vertical, {-6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}], "pesho")
         {:error, "The board can't be created! There are wrong coordinates!"}
     """
+    @spec generate_ships(List, String) :: {:ok, List} | {:error, String}
     def generate_ships(ships, player_name) do
         board = Enum.map(ships,
                     fn({orientation, {x,y}, size}) -> 
@@ -34,6 +35,9 @@ defmodule Battleships.GamePlayerData do
         generate_board(valid, correct_number_ships, correct_ships, board, player_name)
     end
 
+    @doc """
+    Get all ships of the specified player.
+    """
     def get_ships(player), do: player.ships
 
     @doc ~S"""
