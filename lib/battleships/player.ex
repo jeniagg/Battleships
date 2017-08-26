@@ -58,7 +58,7 @@ defmodule Battleships.Player do
         iex> Battleships.Player.create_room("az", "room1")
         {:error, "Room with this name already exists"}
 
-        iex> Battleships.Player.create_room("test_player", "room7")
+        iex> Battleships.Player.create_room("pesho_test", "room7")
         {:ok, "room"}
 
 
@@ -79,7 +79,7 @@ defmodule Battleships.Player do
 
     Examples
 
-        iex> Battleships.Player.enter_room("pesho", "room1")
+        iex> Battleships.Player.enter_room("pesho_test", "room1")
         # {:ok, "93a3ee09-e24a-4a46-a17d-8c9520b108c7"}
  
         iex> Battleships.Player.enter_room("gosho", "room2")

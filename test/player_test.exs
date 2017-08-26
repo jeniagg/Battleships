@@ -1,9 +1,9 @@
 defmodule Battleships.PlayerTest do
-    use ExUnit.Case, async: true
+    use ExUnit.Case, async: false
     doctest Battleships.Player
 
     setup do
-        # Battleships.Server.start_link()
+        Battleships.Server.start_link()
         {:ok, pesho_pid} = Battleships.Player.start_link("pesho")
         {:ok, _} = Battleships.Player.start_link("gosho")
         {:ok, test_player} = Battleships.Player.start_link("test_player")
@@ -16,7 +16,7 @@ defmodule Battleships.PlayerTest do
         {:ok, room1: :global.whereis_name("room1")}
         {:ok, room1: room1}
 
-        # {:ok, state: %Battleships.Server{players: ["pesho", "gosho", "az", "test_player"], rooms: ["room1", "test_room"]}}
+        :ok
     end
 
 end

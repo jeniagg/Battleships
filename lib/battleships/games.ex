@@ -80,7 +80,7 @@ defmodule Battleships.Games do
     Examples
 
         iex> Battleships.Games.inspect_state("c5cfe2a9-0b20-42ff-b94d-e93643209aa6")
-        %Battleships.Games{current_player: "pesho", pid: :global.whereis_name("c5cfe2a9-0b20-42ff-b94d-e93643209aa6"),players: %{"gosho" => %Battleships.GamePlayerData{player: nil, ships: []}, "pesho" => %Battleships.GamePlayerData{player: nil, ships: []}}, uuid: "c5cfe2a9-0b20-42ff-b94d-e93643209aa6"}
+        %Battleships.Games{current_player: "pesho", pid: :global.whereis_name("c5cfe2a9-0b20-42ff-b94d-e93643209aa6"), players: %{"gosho" => %Battleships.GamePlayerData{player: nil, ships: []}, "pesho" => %Battleships.GamePlayerData{player: nil, ships: []}}, uuid: "c5cfe2a9-0b20-42ff-b94d-e93643209aa6"}
     """
     def inspect_state(uuid) do
         GenServer.call({:global, uuid}, :inspect_state)

@@ -74,7 +74,7 @@ defmodule Battleships.Rooms do
         iex> Battleships.Rooms.enter_room("room", "a")
         {:ok, "373fe0fa-5dff-4dfa-84f5-e520adca11c5"}
 
-        iex> iex(mix@Jenia-PC)8> Battleships.Rooms.enter_room("room", "ds")
+        iex> Battleships.Rooms.enter_room("room", "ds")
         {:ok, :ok}
     """
     def enter_room(room_name, player_name) do

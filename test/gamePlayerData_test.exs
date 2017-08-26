@@ -1,5 +1,5 @@
 defmodule Battleships.GamePlayerDataTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   doctest Battleships.GamePlayerData
 
 end

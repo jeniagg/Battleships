@@ -35,7 +35,7 @@ defmodule Battleships.Server do
         iex> Battleships.Server.login("pesho_test")
         {:ok, "pesho_test"}
         
-        iex> Battleships.Server.login("pesho")
+        iex> Battleships.Server.login("pesho_test")
         {:error, "Username taken"}
     """
     def login(player_name) do
@@ -79,10 +79,10 @@ defmodule Battleships.Server do
 
     Examples
 
-        iex> Battleships.Server.create_room("room", "pesho")
+        iex> Battleships.Server.create_room("room", "pesho_test")
         {:ok, "room"}
 
-        iex> Battleships.Server.create_room("room", "pesho")
+        iex> Battleships.Server.create_room("room", "pesho_test")
         {:error, "Room with this name already exists."}
  
         iex> Battleships.Server.create_room("b", "room3")
@@ -140,7 +140,7 @@ defmodule Battleships.Server do
     Examples
 
         iex> Battleships.Server.inspect_state()
-        %Battleships.Server{players: [], rooms: []}
+        %Battleships.Server{players: ["pesho_test"], rooms: []}
     """
     def inspect_state() do
         GenServer.call(__MODULE__, :inspect_state)
@@ -210,7 +210,7 @@ defmodule Battleships.Server do
     end
 
    ########################## HANDLE CAST  ##########################
-   
+
 
     def handle_cast({:logout, player_name}, state) do
         case is_logged?(state.players, player_name) do
