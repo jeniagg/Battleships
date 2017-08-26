@@ -80,9 +80,7 @@ defmodule Battleships.Games do
     Examples
 
         iex> Battleships.Games.inspect_state("c5cfe2a9-0b20-42ff-b94d-e93643209aa6")
-        %Battleships.Games{current_player: "a", pid: #PID<0.178.0>, players: %{"a" => %Battleships.GamePlayerData{player: nil,
-        ships: [[{6, 2}, {7, 2}], [{1, 3}, {1, 4}, {1, 5}], [{7, 8}, {7, 9}], [{3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}], [{5, 6}, {6, 6}]]},
-        "b" => %Battleships.GamePlayerData{player: nil,
+        %Battleships.Games{current_player: "pesho", pid: :global.whereis_name("c5cfe2a9-0b20-42ff-b94d-e93643209aa6"),players: %{"gosho" => %Battleships.GamePlayerData{player: nil, ships: []}, "pesho" => %Battleships.GamePlayerData{player: nil, ships: []}}, uuid: "c5cfe2a9-0b20-42ff-b94d-e93643209aa6"}
     """
     def inspect_state(uuid) do
         GenServer.call({:global, uuid}, :inspect_state)
@@ -121,36 +119,28 @@ defmodule Battleships.Games do
     end
 
     def handle_call({:create_board, ships, player_name}, _, state) do
-        ships = Battleships.GamePlayerData.generate_ships(ships)
-        IO.inspect(ships, label: "SHIPS: ")
         {:ok, player_data} = Map.fetch(state.players, player_name)
+        ships = case Battleships.GamePlayerData.get_ships(player_data) do
+            [] -> Battleships.GamePlayerData.generate_ships(ships, player_name)
+            _ -> {:error, "This player already created his board!"}
+        end
         {new_player_data, reply} = update_ships(player_data, ships)
-        IO.inspect(new_player_data, label: "new_player_data: ")
         new_state = %{state | players: Map.put(state.players, player_name, new_player_data)}
         {:reply, reply, new_state}
     end
 
-    # TODO: make the game not die, but ask for a new one, the two players
     def handle_call({:make_move, player_name, move}, _, state) do
         valid_move = validate_move(player_name, move, state)
         other_player = get_other_player(state.current_player, state)
-        IO.inspect(other_player, label: "MAKE MOVE GET OTHER PLAYER")
-       
         other_player_ships = get_player_ships(other_player, state)
-        IO.inspect(other_player_ships, label: "ships of the other player")
-       
         {reply, new_ships} = apply_move(valid_move, move, other_player_ships)
-        IO.inspect(new_ships, label: "apply move new ships")
-
         game_end = check_game_end(new_ships, state.players, state.current_player)
-        IO.inspect(game_end, label: "check if the game is end : ")
-        
         case game_end do
             :continue -> 
                 new_state = update_move_state(reply, other_player, new_ships, state)
                 {:reply, reply, new_state}
             :game_end -> 
-                {:stop, :normal, state}
+                {:stop, :normal, :game_end, state}
         end
     end
 
@@ -167,22 +157,11 @@ defmodule Battleships.Games do
     end
 
     defp check_game_end([], players, current_player) do
-
         players_name = Map.keys(players)
-                IO.inspect(players_name, label: "check game end PLAYERS: ")
         List.foldl(players_name, [], 
             fn(player_name, _) ->
-                IO.inspect(player_name, label: "in the foldl: ")
                 Battleships.Player.match_end(player_name, {:winner, current_player})
-                IO.puts("first foldl is over")
             end)
-        
-        
-        # Enum.reduce(players,
-        # fn({_, player_data}) ->
-        #         Battleships.Player.match_end(player_data.player, {:winner, current_player}) 
-        #     end
-        # )
         :game_end
     end
 

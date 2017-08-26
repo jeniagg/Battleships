@@ -6,7 +6,6 @@ defmodule Battleships.GamePlayerData do
 
     defstruct [ships: [], player: nil]
 
-
     @doc ~S"""
     Generates the ships, respectively a board of a player
 
@@ -15,23 +14,24 @@ defmodule Battleships.GamePlayerData do
  
     Examples
 
-        iex> Battleships.GamePlayerData.generate_ships([{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}])
+        iex> Battleships.GamePlayerData.generate_ships([{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}], "pesho")
         {:ok,  [[{6, 2}, {7, 2}], [{1, 3}, {1, 4}, {1, 5}], [{7, 8}, {7, 9}], [{3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}], [{5, 6}, {6, 6}]]}
         
-        iex> Battleships.GamePlayerData.generate_ships([{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}])
+        iex> Battleships.GamePlayerData.generate_ships([{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}], "pesho")
         {:error, "Wrong number of ships! They must be 5!"}
 
-        iex> Battleships.GamePlayerData.generate_ships([{:vertical, {-6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}])
+        iex> Battleships.GamePlayerData.generate_ships([{:vertical, {-6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}], "pesho")
         {:error, "The board can't be created! There are wrong coordinates!"}
     """
-    def generate_ships(ships) do
+    def generate_ships(ships, player_name) do
         board = Enum.map(ships,
                     fn({orientation, {x,y}, size}) -> 
                     create_ship(orientation, {x,y}, size)  
                 end)
         valid = is_valid_board(board)
         correct_number_ships = is_correct_number_of_ships(length(board))
-        generate_board(valid, correct_number_ships, board)
+        correct_ships = valid_ships(board)
+        generate_board(valid, correct_number_ships, correct_ships, board, player_name)
     end
 
     def get_ships(player), do: player.ships
@@ -94,17 +94,14 @@ defmodule Battleships.GamePlayerData do
         )
     end
 
-    defp generate_board(true, true, board) do
+    defp generate_board(false, _, _, _, _), do: {:error, "The board can't be created! There are wrong coordinates!"}
+    defp generate_board(_, false, _, _, _), do: {:error, "Wrong number of ships! They must be 5!"}
+    defp generate_board(_, _, false, _, _), do: {:error, "Different ships can't have same coordinates!"}
+    defp generate_board(true, true, true, board, player_name) do
+        %Battleships.GamePlayerData{player: player_name, ships: board}
         {:ok, board}
     end
 
-    defp generate_board(false, _, _) do
-        {:error, "The board can't be created! There are wrong coordinates!"}
-    end
-
-    defp generate_board(_, false, _), do: {:error, "Wrong number of ships! They must be 5!"}
-
-    # TODO if there is already a ship on this coordinates, when try to create a new one -> error
     defp create_ship(orientation, {x,y}, size) do
        create_ship(orientation, {x,y}, size, is_valid({x, y}) and size > 0)
     end
@@ -126,12 +123,11 @@ defmodule Battleships.GamePlayerData do
         end
     end
 
-    defp create_ship(_, {_, _}, _size, false) do
-        {:error, "The ship can't be created"}
-    end
+    defp create_ship(_, {_, _}, _, false), do: {:error, "The ship can't be created"}
+    defp create_ship(_, {_, _}, _, _), do: {:error, "The ship can't be created"}
 
-    defp board_size() do
-        10
-    end 
+    defp valid_ships(ships), do: List.flatten(ships) == Enum.uniq(List.flatten(ships))
+    
+    defp board_size(), do: 10
 
 end

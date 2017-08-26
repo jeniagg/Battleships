@@ -9,10 +9,20 @@ defmodule Battleships.Player do
 
     defstruct [:name, :pid, game: nil, in_room: false]
   
+      
+    def start([player_name, state]) do
+        GenServer.start(__MODULE__, [player_name, state], name: {:global, player_name})
+    end
+
     def start(player_name) do
         GenServer.start(__MODULE__, [player_name], name: {:global, player_name})
     end
 
+    def start_link([player_name, state]) do
+        GenServer.start_link(__MODULE__, [player_name, state], name: {:global, player_name}) 
+    end
+
+    
     def start_link(player_name) do
         GenServer.start_link(__MODULE__, [player_name], name: {:global, player_name}) 
     end
@@ -21,6 +31,8 @@ defmodule Battleships.Player do
         IO.inspect(player_name, label: "Starting player: ")
         {:ok, %Battleships.Player{name: player_name, pid: self()}}
     end
+
+
 
     def child_spec(args) do
         %{
@@ -43,11 +55,13 @@ defmodule Battleships.Player do
 
     Examples
 
-        iex> Battleships.Player.create_room("pesho", "room")
+        iex> Battleships.Player.create_room("az", "room1")
+        {:error, "Room with this name already exists"}
+
+        iex> Battleships.Player.create_room("test_player", "room7")
         {:ok, "room"}
- 
-        iex> Battleships.Player.create_room("pesho", "room")
-        {:error, "Room with this name already exists."}
+
+
     """
     # @spec create_room(String|{node, String}, String) :: {:ok, pid} | {:error, String}
     def create_room(player_name, room_name) do
@@ -66,13 +80,15 @@ defmodule Battleships.Player do
     Examples
 
         iex> Battleships.Player.enter_room("pesho", "room1")
-        {:ok, "93a3ee09-e24a-4a46-a17d-8c9520b108c7"}
+        # {:ok, "93a3ee09-e24a-4a46-a17d-8c9520b108c7"}
  
         iex> Battleships.Player.enter_room("gosho", "room2")
         {:error, "Room with this name doesn't exists"}
+    
+
     """
     def enter_room(player_name, room_name) do   
-        GenServer.call({:global, player_name}, {:enter_room, room_name})  
+        GenServer.call({:global, player_name}, {:enter_room, room_name}, :infinity)  
     end
 
     @doc ~S"""
@@ -115,7 +131,7 @@ defmodule Battleships.Player do
     Examples
 
         iex> Battleships.Player.inspect_state("pesho")
-        %Battleships.Player{game: nil, in_room: false, name: "pesho", pid: #PID<0.184.0>}
+        %Battleships.Player{game: nil, in_room: false, name: "pesho", pid: :global.whereis_name("pesho")}
     """
     def inspect_state(player_name) do
         GenServer.call({:global, player_name}, :inspect_state)
@@ -149,11 +165,17 @@ defmodule Battleships.Player do
         iex> Battleships.Player.create_board("a",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {5,6}, 2}])
         :ok
 
+        iex>  Battleships.Player.create_board("a",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {1,2}, 2}])
+        {:error, "This player already created his board!"}
+
         iex> Battleships.Player.create_board("a",[{:vertical, {6,11}, 1}, {:horizontal, {1,3}, 2}])
         {:error, "The board can't be created! There are wrong coordinates!"}
 
         iex> Battleships.Player.create_board("a",[{:vertical, {6,2}, 1}, {:horizontal, {1,3}, 2}])
         {:error, "Wrong number of ships! They must be 5!"}
+
+        iex>  Battleships.Player.create_board("pesho",[{:vertical, {6,2}, 2}, {:horizontal, {1,3}, 3}, {:horizontal, {7,8}, 2}, {:vertical, {3,7}, 5}, {:vertical, {7,2}, 2}])
+        {:error, "Different ships can't have same coordinates!"}
     """
     @spec create_board(String, List) :: {:ok, pid} | {:error, String}
     def create_board(player_name, ships) do
@@ -205,41 +227,28 @@ defmodule Battleships.Player do
         player_name -> the name of the player whose process is to be stopped
  
     Examples
-        iex> Battleships.Player.stop("pesho")
+        iex> Battleships.Player.stop("gosho")
         :ok
     """
-    @spec stop(String):: term()
+    # @spec stop(String):: term()
     def stop(player_name) do
-      IO.inspect(player_name, label: "stop in the player, player_name: ")
       GenServer.call({:global, player_name}, :stop)
     end
 
-    
-    def move_player_to_another_node(player_name, node, room_name) do
-        GenServer.call({:global, player_name}, {:move_player_to_another_node, node, room_name})
-    end
 
     #################### HANDLE CALL ####################
 
-    def handle_call({:move_player_to_another_node, node, room_name}, _, state) do
-        Battleships.Server.remove_room(room_name)
-        player_state = state;
-        Battleships.Player.stop(state.player)
-        Battleships.PlayerSup.create_player(node, player_state.name)
-        new_state = player_state
-        {:reply, {:ok, new_state}, new_state}
-    end
 
     def handle_call(:inspect_state, _, state) do
         {:reply, state, state}
     end
-
+    
     def handle_call({:enter_room, room_name}, _, state) do
         reply = case state.in_room do
-            true -> state
+            true -> {:error, "The player is already in a room."}
             false -> Battleships.Server.enter_room(room_name, state.name) 
-        end
-        {:reply, reply, state}  
+        end 
+        {:reply, reply, state}
     end
 
     def handle_call({:create_room, room_name}, _, state) do
@@ -296,22 +305,5 @@ defmodule Battleships.Player do
         new_state = %{state | game: nil}
         {:noreply, new_state}
     end
-
-    ##################### PRIVATE FUNCTIONS #########################
-
-    # find game's pid by its name
-    # return pid of the game
-    # defp find_game(state, game_name) do
-    #     game = Enum.find(state.game, fn(element) -> element == game_name end)
-    #     find_game_pid(game_name)
-    # end
-
-    # defp find_game_pid(nil), do: nil
-    # defp find_game_pid(game_name), do: :global.whereis_name(game_name)
-
-    # for testing supervisors
-    # def crash_player(player_name) do
-    #     raise ArgumentError 
-    # end
 
 end

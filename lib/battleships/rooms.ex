@@ -1,4 +1,5 @@
 defmodule Battleships.Rooms do
+   
     @moduledoc """
     The module represents the rooms server.
     It is responsible for activites such as leaving a room or entering a room.
@@ -41,7 +42,7 @@ defmodule Battleships.Rooms do
     Examples
 
         iex> Battleships.Rooms.inspect_state("room3")
-        %Battleships.Rooms{counter: 1, name: "room3", pid: #PID<0.188.0>, players: ["pesho"]}
+        %Battleships.Rooms{counter: 1, name: "room3", pid: :global.whereis_name("room3"), players: ["pesho"]}
     """
     def inspect_state(room_name) do
         GenServer.call({:global, room_name}, :inspect_state)
@@ -77,7 +78,7 @@ defmodule Battleships.Rooms do
         {:ok, :ok}
     """
     def enter_room(room_name, player_name) do
-        GenServer.call({:global, room_name}, {:enter_room, player_name})
+        GenServer.call({:global, room_name}, {:enter_room, player_name}, :infinity)
     end
 
     @doc ~S"""
@@ -108,7 +109,6 @@ defmodule Battleships.Rooms do
     def handle_call({:enter_room, player_name}, _, state) do
         new_state = %{ state | players: [ player_name | state.players], counter: state.counter + 1}
         game = start_game(new_state.counter, new_state.players, new_state)
-        # Battleships.Player.set_in_game(game_pid, new_state.players)
         {:reply, {:ok, game}, new_state}
     end
 
@@ -128,46 +128,34 @@ defmodule Battleships.Rooms do
     ########################### PRIVATE FUNCTIONS ###########################
 
     defp start_game(2, players, new_state) do
-        IO.inspect(new_state, label: "rooms state")
-        players_on_the_same_node(players, new_state.name) #first player
+        players_on_the_same_node(players, new_state.name)
         game = Battleships.GameSup.create_game(players)
-        List.foldl(players, Map.new(), 
+        [second_player, first_player] = players
+    
+        List.foldl(players, :ok, 
             fn(player_name, acc) ->
                  Battleships.Player.set_in_game(player_name, game)
             end)
         game
     end
 
-    defp start_game(_, _players, _), do: :ok
+    defp start_game(_, _players, _, _), do: :ok
     
     defp players_on_the_same_node(players, state) do
-        nodes = List.foldl(players, [], 
-            fn(player_name, acc) ->
-                 [ node() | acc]
-            end)
-        IO.inspect(nodes, label: "acc in node players: ")
-        case List.first(nodes) == List.last(nodes) do
+        IO.inspect(players, label: "node players")
+        [second_player, first_player] = players
+        node_second = node(:global.whereis_name(second_player))
+        node_first = node(:global.whereis_name(first_player))
+        case node_second == node_first do
             true -> :ok
-            false -> Battleships.Player.move_player_to_another_node(List.first(players), List.last(nodes), state.name)
+            false ->
+                :global.unregister_name(second_player)
+                Battleships.PlayerSup.create_player(second_player, node_first)
+                IO.inspect([node(:global.whereis_name(second_player)) , node(:global.whereis_name(first_player))], label: "NODES " )
         end
     end
 
     defp check_counter(pid, 0), do: GenServer.stop(pid, :normal)
     defp check_counter(_pid, counter) when counter > 0, do: :ok
 
-    # defp find_player(state, player_name) do
-    #     player = Enum.find(state.players, fn(element) -> element == player_name end)
-    #     find_player_pid(player)
-    # end
-
-    # defp find_player_pid(nil), do: nil
-    # defp find_player_pid(player), do: :global.whereis_name(player)
-
-    # def find_room_pid(nil), do: nil
-    # def find_room_pid(room_name) do
-    #     # IO.inspect(room_name, label: " find room pid : room_name")
-    #     # :global.whereis_name(room_name)
-    #     state = inspect_state(room_name)
-    #     state.pid
-    # end
 end

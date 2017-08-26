@@ -23,8 +23,8 @@ defmodule Battleships.PlayerSup do
     end
 
     def create_player(player_name, node) do
-        {:ok, pid} = Supervisor.start_child(node, [player_name])
+        {:ok, pid} = Supervisor.start_child({__MODULE__, node}, [player_name])
         pid
     end
-    
+
 end
